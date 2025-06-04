@@ -2,20 +2,21 @@
 triple:          'arm64-apple-darwin'
 binary-path:     filter
 relocations:
-  - { offset: 0x1E, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x0, symBinAddr: 0x100001F04, symSize: 0x4F8 }
-  - { offset: 0x3A, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x0, symBinAddr: 0x100001F04, symSize: 0x4F8 }
-  - { offset: 0x530, size: 0x8, addend: 0x0, symName: _grayscale, symObjAddr: 0x0, symBinAddr: 0x100002440, symSize: 0x1A4 }
-  - { offset: 0x544, size: 0x8, addend: 0x0, symName: _grayscale, symObjAddr: 0x0, symBinAddr: 0x100002440, symSize: 0x1A4 }
-  - { offset: 0x5E6, size: 0x8, addend: 0x0, symName: _reflect, symObjAddr: 0x1A4, symBinAddr: 0x1000025E4, symSize: 0x2AC }
-  - { offset: 0x66C, size: 0x8, addend: 0x0, symName: _blurPixel, symObjAddr: 0x450, symBinAddr: 0x100002890, symSize: 0x230 }
-  - { offset: 0x774, size: 0x8, addend: 0x0, symName: _blur, symObjAddr: 0x680, symBinAddr: 0x100002AC0, symSize: 0x23C }
-  - { offset: 0x84B, size: 0x8, addend: 0x0, symName: _edges, symObjAddr: 0x8BC, symBinAddr: 0x100002CFC, symSize: 0x4B6C }
-  - { offset: 0xA6C, size: 0x8, addend: 0x0, symName: _gxMatrix, symObjAddr: 0x5428, symBinAddr: 0x100007868, symSize: 0xC8 }
-  - { offset: 0xB1D, size: 0x8, addend: 0x0, symName: _getColorChannel, symObjAddr: 0x54F0, symBinAddr: 0x100007930, symSize: 0x94 }
-  - { offset: 0xB56, size: 0x8, addend: 0x0, symName: _gyMatrix, symObjAddr: 0x5584, symBinAddr: 0x1000079C4, symSize: 0xC8 }
-  - { offset: 0xC07, size: 0x8, addend: 0x0, symName: _setColorChannel, symObjAddr: 0x564C, symBinAddr: 0x100007A8C, symSize: 0x88 }
-  - { offset: 0xC4B, size: 0x8, addend: 0x0, symName: _averageRed9, symObjAddr: 0x56D4, symBinAddr: 0x100007B14, symSize: 0xA0 }
-  - { offset: 0xD0B, size: 0x8, addend: 0x0, symName: _averageGreen9, symObjAddr: 0x5774, symBinAddr: 0x100007BB4, symSize: 0xA0 }
-  - { offset: 0xDCB, size: 0x8, addend: 0x0, symName: _averageBlue9, symObjAddr: 0x5814, symBinAddr: 0x100007C54, symSize: 0xA0 }
-  - { offset: 0xE8B, size: 0x8, addend: 0x0, symName: _edgeCase, symObjAddr: 0x58B4, symBinAddr: 0x100007CF4, symSize: 0x10C }
+  - { offset: 0x1E, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x0, symBinAddr: 0x100002578, symSize: 0x4F8 }
+  - { offset: 0x3A, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x0, symBinAddr: 0x100002578, symSize: 0x4F8 }
+  - { offset: 0x530, size: 0x8, addend: 0x0, symName: _grayscale, symObjAddr: 0x0, symBinAddr: 0x100002AB4, symSize: 0x1A4 }
+  - { offset: 0x54B, size: 0x8, addend: 0x0, symName: _grayscale, symObjAddr: 0x0, symBinAddr: 0x100002AB4, symSize: 0x1A4 }
+  - { offset: 0x5ED, size: 0x8, addend: 0x0, symName: _reflect, symObjAddr: 0x1A4, symBinAddr: 0x100002C58, symSize: 0x2AC }
+  - { offset: 0x673, size: 0x8, addend: 0x0, symName: _blurPixel, symObjAddr: 0x450, symBinAddr: 0x100002F04, symSize: 0x230 }
+  - { offset: 0x77B, size: 0x8, addend: 0x0, symName: _blur, symObjAddr: 0x680, symBinAddr: 0x100003134, symSize: 0x23C }
+  - { offset: 0x852, size: 0x8, addend: 0x0, symName: _edgePixel, symObjAddr: 0x8BC, symBinAddr: 0x100003370, symSize: 0x2C4 }
+  - { offset: 0x9A2, size: 0x8, addend: 0x0, symName: _getColorChannel, symObjAddr: 0xB80, symBinAddr: 0x100003634, symSize: 0x94 }
+  - { offset: 0x9D8, size: 0x8, addend: 0x0, symName: _gxMatrix, symObjAddr: 0xC14, symBinAddr: 0x1000036C8, symSize: 0xC8 }
+  - { offset: 0xA7E, size: 0x8, addend: 0x0, symName: _gyMatrix, symObjAddr: 0xCDC, symBinAddr: 0x100003790, symSize: 0xC8 }
+  - { offset: 0xB24, size: 0x8, addend: 0x0, symName: _setColorChannel, symObjAddr: 0xDA4, symBinAddr: 0x100003858, symSize: 0x88 }
+  - { offset: 0xB64, size: 0x8, addend: 0x0, symName: _edges, symObjAddr: 0xE2C, symBinAddr: 0x1000038E0, symSize: 0x23C }
+  - { offset: 0xC3B, size: 0x8, addend: 0x0, symName: _averageRed9, symObjAddr: 0x1068, symBinAddr: 0x100003B1C, symSize: 0xA0 }
+  - { offset: 0xCEF, size: 0x8, addend: 0x0, symName: _averageGreen9, symObjAddr: 0x1108, symBinAddr: 0x100003BBC, symSize: 0xA0 }
+  - { offset: 0xDA3, size: 0x8, addend: 0x0, symName: _averageBlue9, symObjAddr: 0x11A8, symBinAddr: 0x100003C5C, symSize: 0xA0 }
+  - { offset: 0xE57, size: 0x8, addend: 0x0, symName: _edgeCase, symObjAddr: 0x1248, symBinAddr: 0x100003CFC, symSize: 0x10C }
 ...

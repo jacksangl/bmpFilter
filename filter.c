@@ -7,7 +7,9 @@
 int main(int argc, char *argv[])
 {
     // Define allowable filters
-    char *filters = "begr";
+    char *filters = "begrs";
+    int compressPercent = 0;
+    int seamCarving = 0;
 
     // Get filter flag and check validity
     char filter = getopt(argc, argv, filters);
@@ -15,6 +17,12 @@ int main(int argc, char *argv[])
     {
         printf("Invalid filter.\n");
         return 1;
+    }
+
+    // Check if seam carving is selected
+    if (filter == 's')
+    {
+        seamCarving = 1;
     }
 
     // Ensure only one filter
@@ -25,10 +33,32 @@ int main(int argc, char *argv[])
     }
 
     // Ensure proper usage
-    if (argc != optind + 2)
+    if (seamCarving)
     {
-        printf("Usage: ./filter [flag] infile outfile\n");
-        return 3;
+        // For seam carving, we need: ./filter -s infile outfile compressPercent
+        if (argc != optind + 3)
+        {
+            printf("Usage for seam carving: ./filter -s infile outfile compressPercent\n");
+            return 3;
+        }
+        
+        // Parse compression percentage
+        compressPercent = atoi(argv[optind + 2]);
+        if (compressPercent < 1 || compressPercent > 99)
+        {
+            printf("Compression percentage must be between 1 and 99.\n");
+            return 8;
+        }
+    }
+    else
+    {
+        // For other filters: ./filter [flag] infile outfile
+        if (argc != optind + 2)
+        {
+            printf("Usage: ./filter [flag] infile outfile\n");
+            printf("Usage for seam carving: ./filter -s infile outfile compressPercent\n");
+            return 3;
+        }
     }
 
     // Remember filenames
@@ -118,6 +148,11 @@ int main(int argc, char *argv[])
         // Reflect
         case 'r':
             reflect(height, width, image);
+            break;
+            
+        // Seam carving
+        case 's':
+            seamCarve(height, width, image, compressPercent);
             break;
     }
 

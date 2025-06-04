@@ -2,16 +2,6 @@
 #include <math.h>
 
 // functions to calculate the avg rgb for pixels in the middle of an image
-int averageRed9(int topLeft, int top, int topRight, int middleLeft, int middle, int middleRight, int bottomLeft, int bottom, int bottomRight);
-int averageGreen9(int topLeft, int top, int topRight, int middleLeft, int middle, int middleRight, int bottomLeft, int bottom, int bottomRight);
-int averageBlue9(int topLeft, int top, int topRight, int middleLeft, int middle, int middleRight, int bottomLeft, int bottom, int bottomRight);
-//functions to calculate on the side
-int getColorChannel(RGBTRIPLE pixel, int channel);
-void setColorChannel(RGBTRIPLE *pixel, int channel, int value);
-
-//edge functions
-double gyMatrix(int topLeft, int top, int topRight, int middleLeft, int middle, int middleRight, int bottomLeft, int bottom, int bottomRight);
-double gxMatrix(int topLeft, int top, int topRight, int middleLeft, int middle, int middleRight, int bottomLeft, int bottom, int bottomRight);
 
 // Convert image to grayscale
 // we can take the average of the red, green, and blue values to determine what shade of grey to make the new pixel.
@@ -108,6 +98,49 @@ void blur(int height, int width, RGBTRIPLE image[height][width])
     return;
 }
 
+// Helper function to calculate edge detection for a single pixel at position (i, j)
+void edgePixel(int i, int j, int height, int width, RGBTRIPLE original[height][width], RGBTRIPLE *result)
+{
+    const int CAP = 255;
+    
+    // For each color channel (0=red, 1=green, 2=blue)
+    for (int color = 0; color < 3; color++) {
+        // Get the 3x3 grid of color values around the current pixel
+        // Treat out-of-bounds pixels as 0
+        int grid[9];
+        int idx = 0;
+        
+        // Fill grid in order: topLeft, top, topRight, middleLeft, middle, middleRight, bottomLeft, bottom, bottomRight
+        for (int di = -1; di <= 1; di++) {
+            for (int dj = -1; dj <= 1; dj++) {
+                int ni = i + di;
+                int nj = j + dj;
+                
+                if (ni >= 0 && ni < height && nj >= 0 && nj < width) {
+                    grid[idx] = getColorChannel(original[ni][nj], color);
+                } else {
+                    grid[idx] = 0; 
+                }
+                idx++;
+            }
+        }
+        
+        // Calculate gx and gy using the grid values
+        double bufferX = gxMatrix(grid[0], grid[1], grid[2], grid[3], grid[4], grid[5], grid[6], grid[7], grid[8]);
+        double bufferY = gyMatrix(grid[0], grid[1], grid[2], grid[3], grid[4], grid[5], grid[6], grid[7], grid[8]);
+        
+        // Calculate final edge value
+        double buffer = sqrt(bufferX + bufferY);
+        if (buffer > CAP) {
+            buffer = CAP;
+        }
+        buffer = round(buffer);
+        
+        // Set the color channel
+        setColorChannel(result, color, (int)buffer);
+    }
+}
+
 // Detect edges
 // create a 3x3 grid around pixel // for border pixes treat any pixel past the border having all 0 values
 // gx
@@ -121,403 +154,18 @@ void blur(int height, int width, RGBTRIPLE image[height][width])
 // compute each new channel value as the square root of gx^2 + gy^2
 void edges(int height, int width, RGBTRIPLE image[height][width])
 {
-    const int CAP = 255;
-    double bufferX = 0;
-    double bufferY = 0;
-    double buffer = 0;
+    // Create a copy of the original image
     RGBTRIPLE imageCopy[height][width];
-
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
             imageCopy[i][j] = image[i][j];
         }
     }
 
+    // Apply edge detection to each pixel
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
-            // if on top row
-            if (i == 0) {
-                // if top left corner
-                if (j == 0) {
-                    for (int color = 0; color < 3; color++) {
-                        bufferX = gxMatrix(getColorChannel(imageCopy[i + 1][j + 1], color), getColorChannel(imageCopy[i + 1][j], color), 0,
-                                getColorChannel(imageCopy[i][j + 1], color), getColorChannel(imageCopy[i][j], color), 0, 0,
-                                0, 0);
-                        bufferY = gyMatrix(getColorChannel(imageCopy[i + 1][j + 1], color), getColorChannel(imageCopy[i + 1][j], color), 0,
-                                getColorChannel(imageCopy[i][j + 1], color), getColorChannel(imageCopy[i][j], color), 0, 0,
-                                0, 0);
-                        
-                        buffer = sqrt(bufferX + bufferY);
-                        if (buffer > CAP) {
-                            buffer = CAP;
-                        }
-                        buffer = round(buffer);
-                        setColorChannel(&image[i][j], color, buffer);
-                    }
-                }
-                // if top right corner
-                else if (j == width - 1) {
-                    for (int color = 0; color < 3; color++) {
-                        switch (color) {
-                            case 0: 
-                                bufferX = gxMatrix(0, imageCopy[i + 1][j].rgbtRed, imageCopy[i + 1][j - 1].rgbtRed,
-                                        0, imageCopy[i][j].rgbtRed, imageCopy[i][j - 1].rgbtRed, 0,
-                                        0, 0);
-                                bufferY = gyMatrix(0, imageCopy[i + 1][j].rgbtRed, imageCopy[i + 1][j - 1].rgbtRed,
-                                        0, imageCopy[i][j].rgbtRed, imageCopy[i][j - 1].rgbtRed, 0,
-                                        0, 0);
-                                break;
-
-                            case 1: 
-                                bufferX = gxMatrix(0, imageCopy[i + 1][j].rgbtGreen, imageCopy[i + 1][j - 1].rgbtGreen,
-                                        0, imageCopy[i][j].rgbtGreen, imageCopy[i][j - 1].rgbtGreen, 0,
-                                        0, 0);
-                                bufferY = gyMatrix(0, imageCopy[i + 1][j].rgbtGreen, imageCopy[i + 1][j - 1].rgbtGreen,
-                                        0, imageCopy[i][j].rgbtGreen, imageCopy[i][j - 1].rgbtGreen, 0,
-                                        0, 0);
-                                break;
-
-                            case 2: 
-                                bufferX = gxMatrix(0, imageCopy[i + 1][j].rgbtBlue, imageCopy[i + 1][j - 1].rgbtBlue,
-                                        0, imageCopy[i][j].rgbtBlue, imageCopy[i][j - 1].rgbtBlue, 0,
-                                        0, 0);
-                                bufferY = gyMatrix(0, imageCopy[i + 1][j].rgbtBlue, imageCopy[i + 1][j - 1].rgbtBlue,
-                                        0, imageCopy[i][j].rgbtBlue, imageCopy[i][j - 1].rgbtBlue, 0,
-                                        0, 0);
-                                break;
-                        }
-                        buffer = sqrt(bufferX + bufferY);
-                        if (buffer > CAP) {
-                            buffer = CAP;
-                        }
-                        buffer = round(buffer);
-                        if (color == 0) {
-                            image[i][j].rgbtRed = buffer;
-                        } else if (color == 1) {
-                            image[i][j].rgbtGreen = buffer;
-                        } else {
-                            image[i][j].rgbtBlue = buffer;
-                        }
-                    }
-                }
-                // if just top row
-                else {
-                    for (int color = 0; color < 3; color++) {
-                        switch (color) {
-                            case 0: 
-                                bufferX = gxMatrix(imageCopy[i + 1][j + 1].rgbtRed, imageCopy[i + 1][j].rgbtRed, imageCopy[i + 1][j - 1].rgbtRed,
-                                        imageCopy[i][j + 1].rgbtRed, imageCopy[i][j].rgbtRed, imageCopy[i][j - 1].rgbtRed, 0,
-                                        0, 0);
-                                bufferY = gyMatrix(imageCopy[i + 1][j + 1].rgbtRed, imageCopy[i + 1][j].rgbtRed, imageCopy[i + 1][j - 1].rgbtRed,
-                                        imageCopy[i][j + 1].rgbtRed, imageCopy[i][j].rgbtRed, imageCopy[i][j - 1].rgbtRed, 0,
-                                        0, 0);
-                                break;
-
-                            case 1: 
-                                bufferX = gxMatrix(imageCopy[i + 1][j + 1].rgbtGreen, imageCopy[i + 1][j].rgbtGreen, imageCopy[i + 1][j - 1].rgbtGreen,
-                                        imageCopy[i][j + 1].rgbtGreen, imageCopy[i][j].rgbtGreen, imageCopy[i][j - 1].rgbtGreen, 0,
-                                        0, 0);
-                                bufferY = gyMatrix(imageCopy[i + 1][j + 1].rgbtGreen, imageCopy[i + 1][j].rgbtGreen, imageCopy[i + 1][j - 1].rgbtGreen,
-                                        imageCopy[i][j + 1].rgbtGreen, imageCopy[i][j].rgbtGreen, imageCopy[i][j - 1].rgbtGreen, 0,
-                                        0, 0);
-                                break;
-
-                            case 2: 
-                                bufferX = gxMatrix(imageCopy[i + 1][j + 1].rgbtBlue, imageCopy[i + 1][j].rgbtBlue, imageCopy[i + 1][j - 1].rgbtBlue,
-                                        imageCopy[i][j + 1].rgbtBlue, imageCopy[i][j].rgbtBlue, imageCopy[i][j - 1].rgbtBlue, 0,
-                                        0, 0);
-                                bufferY = gyMatrix(imageCopy[i + 1][j + 1].rgbtBlue, imageCopy[i + 1][j].rgbtBlue, imageCopy[i + 1][j - 1].rgbtBlue,
-                                        imageCopy[i][j + 1].rgbtBlue, imageCopy[i][j].rgbtBlue, imageCopy[i][j - 1].rgbtBlue, 0,
-                                        0, 0);
-                                break;
-                        }
-                        buffer = sqrt(bufferX + bufferY);
-                        if (buffer > CAP) {
-                            buffer = CAP;
-                        }
-                        buffer = round(buffer);
-                        if (color == 0) {
-                            image[i][j].rgbtRed = buffer;
-                        } else if (color == 1) {
-                            image[i][j].rgbtGreen = buffer;
-                        } else {
-                            image[i][j].rgbtBlue = buffer;
-                        }
-                    }
-                }
-            }
-            // if on bottom row
-            else if (i == height - 1) {
-                // if bottom left corner
-                if (j == 0) {
-                    for (int color = 0; color < 3; color++) {
-                        switch (color) {
-                            case 0: 
-                                bufferX = gxMatrix(0, 0, 0,
-                                        imageCopy[i][j + 1].rgbtRed, imageCopy[i][j].rgbtRed, 0, imageCopy[i - 1][j + 1].rgbtRed,
-                                        imageCopy[i - 1][j].rgbtRed, 0);
-                                bufferY = gyMatrix(0, 0, 0,
-                                        imageCopy[i][j + 1].rgbtRed, imageCopy[i][j].rgbtRed, 0, imageCopy[i - 1][j + 1].rgbtRed,
-                                        imageCopy[i - 1][j].rgbtRed, 0);
-                                break;
-
-                            case 1: 
-                                bufferX = gxMatrix(0, 0, 0,
-                                        imageCopy[i][j + 1].rgbtGreen, imageCopy[i][j].rgbtGreen, 0, imageCopy[i - 1][j + 1].rgbtGreen,
-                                        imageCopy[i - 1][j].rgbtGreen, 0);
-                                bufferY = gyMatrix(0, 0, 0,
-                                        imageCopy[i][j + 1].rgbtGreen, imageCopy[i][j].rgbtGreen, 0, imageCopy[i - 1][j + 1].rgbtGreen,
-                                        imageCopy[i - 1][j].rgbtGreen, 0);
-                                break;
-
-                            case 2: 
-                                bufferX = gxMatrix(0, 0, 0,
-                                        imageCopy[i][j + 1].rgbtBlue, imageCopy[i][j].rgbtBlue, 0, imageCopy[i - 1][j + 1].rgbtBlue,
-                                        imageCopy[i - 1][j].rgbtBlue, 0);
-                                bufferY = gyMatrix(0, 0, 0,
-                                        imageCopy[i][j + 1].rgbtBlue, imageCopy[i][j].rgbtBlue, 0, imageCopy[i - 1][j + 1].rgbtBlue,
-                                        imageCopy[i - 1][j].rgbtBlue, 0);
-                                break;
-                        }
-                        buffer = sqrt(bufferX + bufferY);
-                        if (buffer > CAP) {
-                            buffer = CAP;
-                        }
-                        buffer = round(buffer);
-                        if (color == 0) {
-                            image[i][j].rgbtRed = buffer;
-                        } else if (color == 1) {
-                            image[i][j].rgbtGreen = buffer;
-                        } else {
-                            image[i][j].rgbtBlue = buffer;
-                        }
-                    }
-                }
-                // if bottom right corner
-                else if (j == width - 1) {
-                    for (int color = 0; color < 3; color++) {
-                        switch (color) {
-                            case 0: 
-                                bufferX = gxMatrix(0, 0, 0,
-                                        0, imageCopy[i][j].rgbtRed, imageCopy[i][j - 1].rgbtRed, 0,
-                                        imageCopy[i - 1][j].rgbtRed, imageCopy[i - 1][j - 1].rgbtRed);
-                                bufferY = gyMatrix(0, 0, 0,
-                                        0, imageCopy[i][j].rgbtRed, imageCopy[i][j - 1].rgbtRed, 0,
-                                        imageCopy[i - 1][j].rgbtRed, imageCopy[i - 1][j - 1].rgbtRed);
-                                break;
-
-                            case 1: 
-                                bufferX = gxMatrix(0, 0, 0,
-                                        0, imageCopy[i][j].rgbtGreen, imageCopy[i][j - 1].rgbtGreen, 0,
-                                        imageCopy[i - 1][j].rgbtGreen, imageCopy[i - 1][j - 1].rgbtGreen);
-                                bufferY = gyMatrix(0, 0, 0,
-                                        0, imageCopy[i][j].rgbtGreen, imageCopy[i][j - 1].rgbtGreen, 0,
-                                        imageCopy[i - 1][j].rgbtGreen, imageCopy[i - 1][j - 1].rgbtGreen);
-                                break;
-
-                            case 2: 
-                                bufferX = gxMatrix(0, 0, 0,
-                                        0, imageCopy[i][j].rgbtBlue, imageCopy[i][j - 1].rgbtBlue, 0,
-                                        imageCopy[i - 1][j].rgbtBlue, imageCopy[i - 1][j - 1].rgbtBlue);
-                                bufferY = gyMatrix(0, 0, 0,
-                                        0, imageCopy[i][j].rgbtBlue, imageCopy[i][j - 1].rgbtBlue, 0,
-                                        imageCopy[i - 1][j].rgbtBlue, imageCopy[i - 1][j - 1].rgbtBlue);
-                                break;
-                        }
-                        buffer = sqrt(bufferX + bufferY);
-                        if (buffer > CAP) {
-                            buffer = CAP;
-                        }
-                        buffer = round(buffer);
-                        if (color == 0) {
-                            image[i][j].rgbtRed = buffer;
-                        } else if (color == 1) {
-                            image[i][j].rgbtGreen = buffer;
-                        } else {
-                            image[i][j].rgbtBlue = buffer;
-                        }
-                    }
-                }
-                // just on bottom
-                else {
-                    for (int color = 0; color < 3; color++) {
-                        switch (color) {
-                            case 0: 
-                                bufferX = gxMatrix(0, 0, 0,
-                                        imageCopy[i][j + 1].rgbtRed, imageCopy[i][j].rgbtRed, imageCopy[i][j - 1].rgbtRed, imageCopy[i - 1][j + 1].rgbtRed,
-                                        imageCopy[i - 1][j].rgbtRed, imageCopy[i - 1][j - 1].rgbtRed);
-                                bufferY = gyMatrix(0, 0, 0,
-                                        imageCopy[i][j + 1].rgbtRed, imageCopy[i][j].rgbtRed, imageCopy[i][j - 1].rgbtRed, imageCopy[i - 1][j + 1].rgbtRed,
-                                        imageCopy[i - 1][j].rgbtRed, imageCopy[i - 1][j - 1].rgbtRed);
-                                break;
-
-                            case 1: 
-                                bufferX = gxMatrix(0, 0, 0,
-                                        imageCopy[i][j + 1].rgbtGreen, imageCopy[i][j].rgbtGreen, imageCopy[i][j - 1].rgbtGreen, imageCopy[i - 1][j + 1].rgbtGreen,
-                                        imageCopy[i - 1][j].rgbtGreen, imageCopy[i - 1][j - 1].rgbtGreen);
-                                bufferY = gyMatrix(0, 0, 0,
-                                        imageCopy[i][j + 1].rgbtGreen, imageCopy[i][j].rgbtGreen, imageCopy[i][j - 1].rgbtGreen, imageCopy[i - 1][j + 1].rgbtGreen,
-                                        imageCopy[i - 1][j].rgbtGreen, imageCopy[i - 1][j - 1].rgbtGreen);
-                                break;
-
-                            case 2: 
-                                bufferX = gxMatrix(0, 0, 0,
-                                        imageCopy[i][j + 1].rgbtBlue, imageCopy[i][j].rgbtBlue, imageCopy[i][j - 1].rgbtBlue, imageCopy[i - 1][j + 1].rgbtBlue,
-                                        imageCopy[i - 1][j].rgbtBlue, imageCopy[i - 1][j - 1].rgbtBlue);
-                                bufferY = gyMatrix(0, 0, 0,
-                                        imageCopy[i][j + 1].rgbtBlue, imageCopy[i][j].rgbtBlue, imageCopy[i][j - 1].rgbtBlue, imageCopy[i - 1][j + 1].rgbtBlue,
-                                        imageCopy[i - 1][j].rgbtBlue, imageCopy[i - 1][j - 1].rgbtBlue);
-                                break;
-                        }
-                        buffer = sqrt(bufferX + bufferY);
-                        if (buffer > CAP) {
-                            buffer = CAP;
-                        }
-                        buffer = round(buffer);
-                        if (color == 0) {
-                            image[i][j].rgbtRed = buffer;
-                        } else if (color == 1) {
-                            image[i][j].rgbtGreen = buffer;
-                        } else {
-                            image[i][j].rgbtBlue = buffer;
-                        }
-                    }
-                }
-            }
-            // if on left
-            else if (j == 0) {
-                for (int color = 0; color < 3; color++) {
-                    switch (color) {
-                        case 0: 
-                            bufferX = gxMatrix(imageCopy[i + 1][j + 1].rgbtRed, imageCopy[i + 1][j].rgbtRed, 0,
-                                    imageCopy[i][j + 1].rgbtRed, imageCopy[i][j].rgbtRed, 0, imageCopy[i - 1][j + 1].rgbtRed,
-                                    imageCopy[i - 1][j].rgbtRed, 0);
-                            bufferY = gyMatrix(imageCopy[i + 1][j + 1].rgbtRed, imageCopy[i + 1][j].rgbtRed, 0,
-                                    imageCopy[i][j + 1].rgbtRed, imageCopy[i][j].rgbtRed, 0, imageCopy[i - 1][j + 1].rgbtRed,
-                                    imageCopy[i - 1][j].rgbtRed, 0);
-                            break;
-
-                        case 1: 
-                            bufferX = gxMatrix(imageCopy[i + 1][j + 1].rgbtGreen, imageCopy[i + 1][j].rgbtGreen, 0,
-                                    imageCopy[i][j + 1].rgbtGreen, imageCopy[i][j].rgbtGreen, 0, imageCopy[i - 1][j + 1].rgbtGreen,
-                                    imageCopy[i - 1][j].rgbtGreen, 0);
-                            bufferY = gyMatrix(imageCopy[i + 1][j + 1].rgbtGreen, imageCopy[i + 1][j].rgbtGreen, 0,
-                                    imageCopy[i][j + 1].rgbtGreen, imageCopy[i][j].rgbtGreen, 0, imageCopy[i - 1][j + 1].rgbtGreen,
-                                    imageCopy[i - 1][j].rgbtGreen, 0);
-                            break;
-
-                        case 2: 
-                            bufferX = gxMatrix(imageCopy[i + 1][j + 1].rgbtBlue, imageCopy[i + 1][j].rgbtBlue, 0,
-                                    imageCopy[i][j + 1].rgbtBlue, imageCopy[i][j].rgbtBlue, 0, imageCopy[i - 1][j + 1].rgbtBlue,
-                                    imageCopy[i - 1][j].rgbtBlue, 0);
-                            bufferY = gyMatrix(imageCopy[i + 1][j + 1].rgbtBlue, imageCopy[i + 1][j].rgbtBlue, 0,
-                                    imageCopy[i][j + 1].rgbtBlue, imageCopy[i][j].rgbtBlue, 0, imageCopy[i - 1][j + 1].rgbtBlue,
-                                    imageCopy[i - 1][j].rgbtBlue, 0);
-                            break;
-                    }
-                    buffer = sqrt(bufferX + bufferY);
-                    if (buffer > CAP) {
-                        buffer = CAP;
-                    }
-                    buffer = round(buffer);
-                    if (color == 0) {
-                        image[i][j].rgbtRed = buffer;
-                    } else if (color == 1) {
-                        image[i][j].rgbtGreen = buffer;
-                    } else {
-                        image[i][j].rgbtBlue = buffer;
-                    }
-                }
-            }
-            // if on right
-            else if (j == width - 1) {
-                for (int color = 0; color < 3; color++) {
-                    switch (color) {
-                        case 0: 
-                            bufferX = gxMatrix(0, imageCopy[i + 1][j].rgbtRed, imageCopy[i + 1][j - 1].rgbtRed,
-                                    0, imageCopy[i][j].rgbtRed, imageCopy[i][j - 1].rgbtRed, 0,
-                                    imageCopy[i - 1][j].rgbtRed, imageCopy[i - 1][j - 1].rgbtRed);
-                            bufferY = gyMatrix(0, imageCopy[i + 1][j].rgbtRed, imageCopy[i + 1][j - 1].rgbtRed,
-                                    0, imageCopy[i][j].rgbtRed, imageCopy[i][j - 1].rgbtRed, 0,
-                                    imageCopy[i - 1][j].rgbtRed, imageCopy[i - 1][j - 1].rgbtRed);
-                            break;
-
-                        case 1: 
-                            bufferX = gxMatrix(0, imageCopy[i + 1][j].rgbtGreen, imageCopy[i + 1][j - 1].rgbtGreen,
-                                    0, imageCopy[i][j].rgbtGreen, imageCopy[i][j - 1].rgbtGreen, 0,
-                                    imageCopy[i - 1][j].rgbtGreen, imageCopy[i - 1][j - 1].rgbtGreen);
-                            bufferY = gyMatrix(0, imageCopy[i + 1][j].rgbtGreen, imageCopy[i + 1][j - 1].rgbtGreen,
-                                    0, imageCopy[i][j].rgbtGreen, imageCopy[i][j - 1].rgbtGreen, 0,
-                                    imageCopy[i - 1][j].rgbtGreen, imageCopy[i - 1][j - 1].rgbtGreen);
-                            break;
-
-                        case 2: 
-                            bufferX = gxMatrix(0, imageCopy[i + 1][j].rgbtBlue, imageCopy[i + 1][j - 1].rgbtBlue,
-                                    0, imageCopy[i][j].rgbtBlue, imageCopy[i][j - 1].rgbtBlue, 0,
-                                    imageCopy[i - 1][j].rgbtBlue, imageCopy[i - 1][j - 1].rgbtBlue);
-                            bufferY = gyMatrix(0, imageCopy[i + 1][j].rgbtBlue, imageCopy[i + 1][j - 1].rgbtBlue,
-                                    0, imageCopy[i][j].rgbtBlue, imageCopy[i][j - 1].rgbtBlue, 0,
-                                    imageCopy[i - 1][j].rgbtBlue, imageCopy[i - 1][j - 1].rgbtBlue);
-                            break;
-                    }
-                    buffer = sqrt(bufferX + bufferY);
-                    if (buffer > CAP) {
-                        buffer = CAP;
-                    }
-                    buffer = round(buffer);
-                    if (color == 0) {
-                        image[i][j].rgbtRed = buffer;
-                    } else if (color == 1) {
-                        image[i][j].rgbtGreen = buffer;
-                    } else {
-                        image[i][j].rgbtBlue = buffer;
-                    }
-                }
-            }
-            else {
-                for (int color = 0; color < 3; color++) {
-                    switch (color) {
-                        case 0: 
-                            bufferX = gxMatrix(imageCopy[i + 1][j + 1].rgbtRed, imageCopy[i + 1][j].rgbtRed, imageCopy[i + 1][j - 1].rgbtRed,
-                                    imageCopy[i][j + 1].rgbtRed, imageCopy[i][j].rgbtRed, imageCopy[i][j - 1].rgbtRed, imageCopy[i - 1][j + 1].rgbtRed,
-                                    imageCopy[i - 1][j].rgbtRed, imageCopy[i - 1][j - 1].rgbtRed);
-                            bufferY = gyMatrix(imageCopy[i + 1][j + 1].rgbtRed, imageCopy[i + 1][j].rgbtRed, imageCopy[i + 1][j - 1].rgbtRed,
-                                    imageCopy[i][j + 1].rgbtRed, imageCopy[i][j].rgbtRed, imageCopy[i][j - 1].rgbtRed, imageCopy[i - 1][j + 1].rgbtRed,
-                                    imageCopy[i - 1][j].rgbtRed, imageCopy[i - 1][j - 1].rgbtRed);
-                            break;
-
-                        case 1: 
-                            bufferX = gxMatrix(imageCopy[i + 1][j + 1].rgbtGreen, imageCopy[i + 1][j].rgbtGreen, imageCopy[i + 1][j - 1].rgbtGreen,
-                                    imageCopy[i][j + 1].rgbtGreen, imageCopy[i][j].rgbtGreen, imageCopy[i][j - 1].rgbtGreen, imageCopy[i - 1][j + 1].rgbtGreen,
-                                    imageCopy[i - 1][j].rgbtGreen, imageCopy[i - 1][j - 1].rgbtGreen);
-                            bufferY = gyMatrix(imageCopy[i + 1][j + 1].rgbtGreen, imageCopy[i + 1][j].rgbtGreen, imageCopy[i + 1][j - 1].rgbtGreen,
-                                    imageCopy[i][j + 1].rgbtGreen, imageCopy[i][j].rgbtGreen, imageCopy[i][j - 1].rgbtGreen, imageCopy[i - 1][j + 1].rgbtGreen,
-                                    imageCopy[i - 1][j].rgbtGreen, imageCopy[i - 1][j - 1].rgbtGreen);
-                            break;
-
-                        case 2: 
-                            bufferX = gxMatrix(imageCopy[i + 1][j + 1].rgbtBlue, imageCopy[i + 1][j].rgbtBlue, imageCopy[i + 1][j - 1].rgbtBlue,
-                                    imageCopy[i][j + 1].rgbtBlue, imageCopy[i][j].rgbtBlue, imageCopy[i][j - 1].rgbtBlue, imageCopy[i - 1][j + 1].rgbtBlue,
-                                    imageCopy[i - 1][j].rgbtBlue, imageCopy[i - 1][j - 1].rgbtBlue);
-                            bufferY = gyMatrix(imageCopy[i + 1][j + 1].rgbtBlue, imageCopy[i + 1][j].rgbtBlue, imageCopy[i + 1][j - 1].rgbtBlue,
-                                    imageCopy[i][j + 1].rgbtBlue, imageCopy[i][j].rgbtBlue, imageCopy[i][j - 1].rgbtBlue, imageCopy[i - 1][j + 1].rgbtBlue,
-                                    imageCopy[i - 1][j].rgbtBlue, imageCopy[i - 1][j - 1].rgbtBlue);
-                            break;
-                    }
-                    buffer = sqrt(bufferX + bufferY);
-                    if (buffer > CAP) {
-                        buffer = CAP;
-                    }
-                    buffer = round(buffer);
-                    if (color == 0) {
-                        image[i][j].rgbtRed = buffer;
-                    } else if (color == 1) {
-                        image[i][j].rgbtGreen = buffer;
-                    } else {
-                        image[i][j].rgbtBlue = buffer;
-                    }
-                }
-            }
+            edgePixel(i, j, height, width, imageCopy, &image[i][j]);
         }
     }
     return;
@@ -604,4 +252,87 @@ void edgeCase(int i, int j, int width, int height, RGBTRIPLE image[height][width
     } else if (j == width - 1) {
         return;
     }
+}
+
+// EDGE ENERGY FOR SEAM DETECTION
+int edgeEnergy(int i, int j, int height, int width, RGBTRIPLE original[height][width], RGBTRIPLE *result)
+{
+    const int CAP = 255;
+    double totalEnergy = 0.0;
+
+    for (int color = 0; color < 3; color++) {
+        int grid[9];
+        int idx = 0;
+
+        for (int di = -1; di <= 1; di++) {
+            for (int dj = -1; dj <= 1; dj++) {
+                int ni = i + di;
+                int nj = j + dj;
+
+                if (ni >= 0 && ni < height && nj >= 0 && nj < width) {
+                    grid[idx] = getColorChannel(original[ni][nj], color);
+                } else {
+                    grid[idx] = 0;
+                }
+                idx++;
+            }
+        }
+
+        double gx = gxMatrix(grid[0], grid[1], grid[2], grid[3], grid[4], grid[5], grid[6], grid[7], grid[8]);
+        double gy = gyMatrix(grid[0], grid[1], grid[2], grid[3], grid[4], grid[5], grid[6], grid[7], grid[8]);
+
+        double energy = sqrt(gx * gx + gy * gy);
+        if (energy > CAP) energy = CAP;
+
+        totalEnergy += energy;
+    }
+
+    // Average energy across R, G, B channels
+    int avgEnergy = round(totalEnergy / 3.0);
+    return avgEnergy;
+}
+
+
+void seamCarve(int height, int width, RGBTRIPLE image[height][width], int compressWidth)
+{
+    // Create a copy of the original image  // this is the image that we will be modifying
+    RGBTRIPLE imageCopy[height][width];
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            imageCopy[i][j] = image[i][j];
+        }
+    }
+
+    // Find the seam with the minimum energy
+    int *seam = malloc(height * sizeof(int));
+    for (int i = 0; i < width; i++) {
+        findSeam(height, width, imageCopy, seam);
+        removeSeam(height, width, imageCopy, seam, compressWidth);
+    }
+
+
+    free(seam);
+
+    return;
+}
+
+void findSeam(int height, int width, RGBTRIPLE image[height][width], int *seam)
+{
+    // Calculate edge energy for each pixel
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            seam[i] = edgeEnergy(i, j, height, width, image, &image[i][j]);
+        }
+    }
+}
+
+void removeSeam(int height, int width, RGBTRIPLE image[height][width], int *seam, int compressWidth)
+{
+    // This is a placeholder implementation for seam removal
+    // In a full implementation, this would remove the minimum energy seam
+    // and shift pixels to fill the gap, reducing the width by 1
+    
+    // For now, just return without doing anything
+    // TODO: Implement actual seam removal algorithm
+    return;
 }
