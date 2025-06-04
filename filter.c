@@ -6,57 +6,55 @@
 
 int main(int argc, char *argv[])
 {
-    // Define allowable filters
-    char *filters = "begrs";
+    // Define allowable filters (s: means s takes an argument)
+    char *filters = "begrs:";
     int compressPercent = 0;
     int seamCarving = 0;
+    char filter = 0;
 
     // Get filter flag and check validity
-    char filter = getopt(argc, argv, filters);
-    if (filter == '?')
-    {
-        printf("Invalid filter.\n");
+    int opt;
+    while ((opt = getopt(argc, argv, filters)) != -1) {
+        switch (opt) {
+            case 'b':
+            case 'e':
+            case 'g':
+            case 'r':
+                filter = opt;
+                break;
+            case 's':
+                filter = opt;
+                seamCarving = 1;
+                compressPercent = atoi(optarg);  // optarg contains the argument after -s
+                if (compressPercent < 1 || compressPercent > 99) {
+                    printf("Compression percentage must be between 1 and 99.\n");
+                    return 8;
+                }
+                break;
+            case '?':
+                printf("Invalid filter.\n");
+                return 1;
+        }
+    }
+
+    // Check if a filter was selected
+    if (filter == 0) {
+        printf("Must specify a filter.\n");
         return 1;
     }
 
-    // Check if seam carving is selected
-    if (filter == 's')
-    {
-        seamCarving = 1;
-    }
-
-    // Ensure only one filter
-    if (getopt(argc, argv, filters) != -1)
-    {
-        printf("Only one filter allowed.\n");
-        return 2;
-    }
-
     // Ensure proper usage
-    if (seamCarving)
-    {
-        // For seam carving, we need: ./filter -s infile outfile compressPercent
-        if (argc != optind + 3)
-        {
-            printf("Usage for seam carving: ./filter -s infile outfile compressPercent\n");
+    if (seamCarving) {
+        // For seam carving: ./filter -s 50 infile outfile
+        if (argc != optind + 2) {
+            printf("Usage for seam carving: ./filter -s percentage infile outfile\n");
             return 3;
         }
-        
-        // Parse compression percentage
-        compressPercent = atoi(argv[optind + 2]);
-        if (compressPercent < 1 || compressPercent > 99)
-        {
-            printf("Compression percentage must be between 1 and 99.\n");
-            return 8;
-        }
-    }
-    else
-    {
-        // For other filters: ./filter [flag] infile outfile
-        if (argc != optind + 2)
-        {
+    } else {
+        // For other filters: ./filter -flag infile outfile
+        if (argc != optind + 2) {
             printf("Usage: ./filter [flag] infile outfile\n");
-            printf("Usage for seam carving: ./filter -s infile outfile compressPercent\n");
+            printf("Usage for seam carving: ./filter -s percentage infile outfile\n");
             return 3;
         }
     }
@@ -182,4 +180,4 @@ int main(int argc, char *argv[])
     fclose(inptr);
     fclose(outptr);
     return 0;
-}
+} 

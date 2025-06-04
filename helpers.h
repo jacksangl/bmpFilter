@@ -13,7 +13,7 @@ void edges(int height, int width, RGBTRIPLE image[height][width]);
 void blur(int height, int width, RGBTRIPLE image[height][width]);
 
 // Seam carving
-void seamCarve(int height, int width, RGBTRIPLE image[height][width], int compressWidth);
+int seamCarve(int height, int width, RGBTRIPLE image[height][width], int compressPercent);
 
 // Helper functions for blur
 void blurPixel(int i, int j, int height, int width, RGBTRIPLE original[height][width], RGBTRIPLE *result);
@@ -23,8 +23,8 @@ void edgePixel(int i, int j, int height, int width, RGBTRIPLE original[height][w
 
 // Seam carving helper functions
 void findSeam(int height, int width, RGBTRIPLE image[height][width], int *seam);
-void removeSeam(int height, int width, RGBTRIPLE image[height][width], int *seam, int compressWidth);
-int edgeEnergy(int i, int j, int height, int width, RGBTRIPLE original[height][width], RGBTRIPLE *result);
+void removeSeam(int height, int width, RGBTRIPLE image[height][width], int *seam);
+int edgeEnergy(int i, int j, int height, int width, RGBTRIPLE original[height][width]);
 
 // Matrix calculation functions for edge detection
 double gxMatrix(int topLeft, int top, int topRight, int middleLeft, int middle, int middleRight, int bottomLeft, int bottom, int bottomRight);
@@ -39,5 +39,8 @@ int averageBlue9(int topLeft, int top, int topRight, int middleLeft, int middle,
 int getColorChannel(RGBTRIPLE pixel, int channel);
 void setColorChannel(RGBTRIPLE *pixel, int channel, int value);
 
-// Edge case handling function
+// Utility functions
+int min(int a, int b);
+
+// Edge case handling function - DEPRECATED (no longer used)
 void edgeCase(int i, int j, int width, int height, RGBTRIPLE image[height][width]);

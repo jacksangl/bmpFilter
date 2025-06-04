@@ -1,5 +1,13 @@
 #include "helpers.h"
 #include <math.h>
+#include <limits.h>
+#include <stdlib.h>
+
+// Helper function to find minimum of two integers
+int min(int a, int b)
+{
+    return (a < b) ? a : b;
+}
 
 // functions to calculate the avg rgb for pixels in the middle of an image
 
@@ -229,110 +237,158 @@ void setColorChannel(RGBTRIPLE *pixel, int channel, int value)
     }
 }
 
-void edgeCase(int i, int j, int width, int height, RGBTRIPLE image[height][width])
-{
-    if (i == 0) {
-        if (j == 0) {
-            return;
-        } else if (j == width - 1) {
-            return;
-        } else {
-            return;
-        }   
-    } else if (i == height - 1) {   
-        if (j == 0) {
-            return;
-        } else if (j == width - 1) {
-            return;
-        } else {
-            return;
-        }
-    } else if (j == 0) {
-        return;
-    } else if (j == width - 1) {
-        return;
-    }
-}
-
 // EDGE ENERGY FOR SEAM DETECTION
-int edgeEnergy(int i, int j, int height, int width, RGBTRIPLE original[height][width], RGBTRIPLE *result)
+int edgeEnergy(int i, int j, int height, int width, RGBTRIPLE image[height][width])
 {
-    const int CAP = 255;
-    double totalEnergy = 0.0;
-
+    // For each color channel (0=red, 1=green, 2=blue)
+    int totalEnergy = 0;
+    
     for (int color = 0; color < 3; color++) {
+        // Get the 3x3 grid of color values around the current pixel
+        // Treat out-of-bounds pixels as edge pixels (replicate edge values)
         int grid[9];
         int idx = 0;
-
+        
+        // Fill grid in order: topLeft, top, topRight, middleLeft, middle, middleRight, bottomLeft, bottom, bottomRight
         for (int di = -1; di <= 1; di++) {
             for (int dj = -1; dj <= 1; dj++) {
                 int ni = i + di;
                 int nj = j + dj;
-
-                if (ni >= 0 && ni < height && nj >= 0 && nj < width) {
-                    grid[idx] = getColorChannel(original[ni][nj], color);
-                } else {
-                    grid[idx] = 0;
-                }
+                
+                // Clamp to image boundaries (replicate edge pixels)
+                if (ni < 0) ni = 0;
+                if (ni >= height) ni = height - 1;
+                if (nj < 0) nj = 0;
+                if (nj >= width) nj = width - 1;
+                
+                grid[idx] = getColorChannel(image[ni][nj], color);
                 idx++;
             }
         }
-
-        double gx = gxMatrix(grid[0], grid[1], grid[2], grid[3], grid[4], grid[5], grid[6], grid[7], grid[8]);
-        double gy = gyMatrix(grid[0], grid[1], grid[2], grid[3], grid[4], grid[5], grid[6], grid[7], grid[8]);
-
-        double energy = sqrt(gx * gx + gy * gy);
-        if (energy > CAP) energy = CAP;
-
-        totalEnergy += energy;
+        
+        // Calculate gx and gy using sobel operator
+        int gx = -1*grid[0] + 0*grid[1] + 1*grid[2] +
+                 -2*grid[3] + 0*grid[4] + 2*grid[5] +
+                 -1*grid[6] + 0*grid[7] + 1*grid[8];
+                 
+        int gy = -1*grid[0] + -2*grid[1] + -1*grid[2] +
+                  0*grid[3] +  0*grid[4] +  0*grid[5] +
+                  1*grid[6] +  2*grid[7] +  1*grid[8];
+        
+        // Add to total energy
+        totalEnergy += gx*gx + gy*gy;
     }
-
-    // Average energy across R, G, B channels
-    int avgEnergy = round(totalEnergy / 3.0);
-    return avgEnergy;
+    
+    return totalEnergy;
 }
 
 
-void seamCarve(int height, int width, RGBTRIPLE image[height][width], int compressWidth)
+
+
+int seamCarve(int height, int width, RGBTRIPLE image[height][width], int compressPercent)
 {
-    // Create a copy of the original image  // this is the image that we will be modifying
+    // Create a copy of the original image
     RGBTRIPLE imageCopy[height][width];
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
             imageCopy[i][j] = image[i][j];
         }
     }
-
-    // Find the seam with the minimum energy
+    
+    // Calculate how many seams to remove based on compression percentage
+    int seamsToRemove = (width * compressPercent) / 100;
+    if (seamsToRemove >= width) {
+        seamsToRemove = width - 1; // Don't remove all columns
+    }
+    
+    int currentWidth = width;
     int *seam = malloc(height * sizeof(int));
-    for (int i = 0; i < width; i++) {
-        findSeam(height, width, imageCopy, seam);
-        removeSeam(height, width, imageCopy, seam, compressWidth);
+    
+    for (int n = 0; n < seamsToRemove; n++) {
+        findSeam(height, currentWidth, imageCopy, seam);
+        removeSeam(height, currentWidth, imageCopy, seam);
+        currentWidth--;
     }
 
+    // Copy back the carved image (only the remaining pixels)
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < currentWidth; j++) {
+            image[i][j] = imageCopy[i][j];
+        }
+    }
 
     free(seam);
-
-    return;
+    return currentWidth; // Return the new width
 }
 
 void findSeam(int height, int width, RGBTRIPLE image[height][width], int *seam)
 {
-    // Calculate edge energy for each pixel
-    for (int i = 0; i < height; i++) {
+    int M[height][width];
+    
+    // 1. Calculate energy and initialize first row
+    for (int j = 0; j < width; j++) {
+        M[0][j] = edgeEnergy(0, j, height, width, image);
+    }
+    
+    // 2. Fill DP table
+    for (int i = 1; i < height; i++) {
         for (int j = 0; j < width; j++) {
-            seam[i] = edgeEnergy(i, j, height, width, image, &image[i][j]);
+            int current_energy = edgeEnergy(i, j, height, width, image);
+            int min_prev = M[i-1][j]; // directly above
+            
+            if (j > 0 && M[i-1][j-1] < min_prev) {
+                min_prev = M[i-1][j-1]; // diagonal left
+            }
+            if (j < width-1 && M[i-1][j+1] < min_prev) {
+                min_prev = M[i-1][j+1]; // diagonal right
+            }
+            
+            M[i][j] = current_energy + min_prev;
         }
+    }
+    
+    // 3. Find minimum in last row
+    int min_col = 0;
+    for (int j = 1; j < width; j++) {
+        if (M[height-1][j] < M[height-1][min_col]) {
+            min_col = j;
+        }
+    }
+    
+    // 4. Trace back the seam
+    seam[height-1] = min_col;
+    
+    for (int i = height-2; i >= 0; i--) {
+        int j = seam[i+1];
+        int best_j = j;
+        int best_energy = M[i][j];
+        
+        // Check left diagonal
+        if (j > 0 && M[i][j-1] < best_energy) {
+            best_j = j - 1;
+            best_energy = M[i][j-1];
+        }
+        
+        // Check right diagonal
+        if (j < width-1 && M[i][j+1] < best_energy) {
+            best_j = j + 1;
+            best_energy = M[i][j+1];
+        }
+        
+        seam[i] = best_j;
     }
 }
 
-void removeSeam(int height, int width, RGBTRIPLE image[height][width], int *seam, int compressWidth)
+void removeSeam(int height, int width, RGBTRIPLE image[height][width], int *seam)
 {
-    // This is a placeholder implementation for seam removal
-    // In a full implementation, this would remove the minimum energy seam
-    // and shift pixels to fill the gap, reducing the width by 1
-    
-    // For now, just return without doing anything
-    // TODO: Implement actual seam removal algorithm
+    // Iterate over each row (height), not width
+    for (int i = 0; i < height; i++) {
+        int col = seam[i];  // Column to remove in row i
+        // Shift all pixels to the left from the seam position
+        for (int j = col; j < width - 1; j++) {
+            image[i][j] = image[i][j + 1];
+        }
+    }
     return;
 }
+    

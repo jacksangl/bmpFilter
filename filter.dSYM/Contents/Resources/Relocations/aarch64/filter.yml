@@ -2,21 +2,25 @@
 triple:          'arm64-apple-darwin'
 binary-path:     filter
 relocations:
-  - { offset: 0x1E, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x0, symBinAddr: 0x100002578, symSize: 0x4F8 }
-  - { offset: 0x3A, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x0, symBinAddr: 0x100002578, symSize: 0x4F8 }
-  - { offset: 0x530, size: 0x8, addend: 0x0, symName: _grayscale, symObjAddr: 0x0, symBinAddr: 0x100002AB4, symSize: 0x1A4 }
-  - { offset: 0x54B, size: 0x8, addend: 0x0, symName: _grayscale, symObjAddr: 0x0, symBinAddr: 0x100002AB4, symSize: 0x1A4 }
-  - { offset: 0x5ED, size: 0x8, addend: 0x0, symName: _reflect, symObjAddr: 0x1A4, symBinAddr: 0x100002C58, symSize: 0x2AC }
-  - { offset: 0x673, size: 0x8, addend: 0x0, symName: _blurPixel, symObjAddr: 0x450, symBinAddr: 0x100002F04, symSize: 0x230 }
-  - { offset: 0x77B, size: 0x8, addend: 0x0, symName: _blur, symObjAddr: 0x680, symBinAddr: 0x100003134, symSize: 0x23C }
-  - { offset: 0x852, size: 0x8, addend: 0x0, symName: _edgePixel, symObjAddr: 0x8BC, symBinAddr: 0x100003370, symSize: 0x2C4 }
-  - { offset: 0x9A2, size: 0x8, addend: 0x0, symName: _getColorChannel, symObjAddr: 0xB80, symBinAddr: 0x100003634, symSize: 0x94 }
-  - { offset: 0x9D8, size: 0x8, addend: 0x0, symName: _gxMatrix, symObjAddr: 0xC14, symBinAddr: 0x1000036C8, symSize: 0xC8 }
-  - { offset: 0xA7E, size: 0x8, addend: 0x0, symName: _gyMatrix, symObjAddr: 0xCDC, symBinAddr: 0x100003790, symSize: 0xC8 }
-  - { offset: 0xB24, size: 0x8, addend: 0x0, symName: _setColorChannel, symObjAddr: 0xDA4, symBinAddr: 0x100003858, symSize: 0x88 }
-  - { offset: 0xB64, size: 0x8, addend: 0x0, symName: _edges, symObjAddr: 0xE2C, symBinAddr: 0x1000038E0, symSize: 0x23C }
-  - { offset: 0xC3B, size: 0x8, addend: 0x0, symName: _averageRed9, symObjAddr: 0x1068, symBinAddr: 0x100003B1C, symSize: 0xA0 }
-  - { offset: 0xCEF, size: 0x8, addend: 0x0, symName: _averageGreen9, symObjAddr: 0x1108, symBinAddr: 0x100003BBC, symSize: 0xA0 }
-  - { offset: 0xDA3, size: 0x8, addend: 0x0, symName: _averageBlue9, symObjAddr: 0x11A8, symBinAddr: 0x100003C5C, symSize: 0xA0 }
-  - { offset: 0xE57, size: 0x8, addend: 0x0, symName: _edgeCase, symObjAddr: 0x1248, symBinAddr: 0x100003CFC, symSize: 0x10C }
+  - { offset: 0x1E, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x0, symBinAddr: 0x1000016A8, symSize: 0x738 }
+  - { offset: 0x3A, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x0, symBinAddr: 0x1000016A8, symSize: 0x738 }
+  - { offset: 0x5AB, size: 0x8, addend: 0x0, symName: _min, symObjAddr: 0x0, symBinAddr: 0x100001E28, symSize: 0x48 }
+  - { offset: 0x5C6, size: 0x8, addend: 0x0, symName: _min, symObjAddr: 0x0, symBinAddr: 0x100001E28, symSize: 0x48 }
+  - { offset: 0x5FC, size: 0x8, addend: 0x0, symName: _grayscale, symObjAddr: 0x48, symBinAddr: 0x100001E70, symSize: 0x1A4 }
+  - { offset: 0x69E, size: 0x8, addend: 0x0, symName: _reflect, symObjAddr: 0x1EC, symBinAddr: 0x100002014, symSize: 0x2AC }
+  - { offset: 0x724, size: 0x8, addend: 0x0, symName: _blurPixel, symObjAddr: 0x498, symBinAddr: 0x1000022C0, symSize: 0x230 }
+  - { offset: 0x82C, size: 0x8, addend: 0x0, symName: _blur, symObjAddr: 0x6C8, symBinAddr: 0x1000024F0, symSize: 0x23C }
+  - { offset: 0x903, size: 0x8, addend: 0x0, symName: _edgePixel, symObjAddr: 0x904, symBinAddr: 0x10000272C, symSize: 0x2C4 }
+  - { offset: 0xA53, size: 0x8, addend: 0x0, symName: _getColorChannel, symObjAddr: 0xBC8, symBinAddr: 0x1000029F0, symSize: 0x94 }
+  - { offset: 0xA89, size: 0x8, addend: 0x0, symName: _gxMatrix, symObjAddr: 0xC5C, symBinAddr: 0x100002A84, symSize: 0xC8 }
+  - { offset: 0xB2F, size: 0x8, addend: 0x0, symName: _gyMatrix, symObjAddr: 0xD24, symBinAddr: 0x100002B4C, symSize: 0xC8 }
+  - { offset: 0xBD5, size: 0x8, addend: 0x0, symName: _setColorChannel, symObjAddr: 0xDEC, symBinAddr: 0x100002C14, symSize: 0x88 }
+  - { offset: 0xC15, size: 0x8, addend: 0x0, symName: _edges, symObjAddr: 0xE74, symBinAddr: 0x100002C9C, symSize: 0x23C }
+  - { offset: 0xCEC, size: 0x8, addend: 0x0, symName: _averageRed9, symObjAddr: 0x10B0, symBinAddr: 0x100002ED8, symSize: 0xA0 }
+  - { offset: 0xDA0, size: 0x8, addend: 0x0, symName: _averageGreen9, symObjAddr: 0x1150, symBinAddr: 0x100002F78, symSize: 0xA0 }
+  - { offset: 0xE54, size: 0x8, addend: 0x0, symName: _averageBlue9, symObjAddr: 0x11F0, symBinAddr: 0x100003018, symSize: 0xA0 }
+  - { offset: 0xF08, size: 0x8, addend: 0x0, symName: _edgeEnergy, symObjAddr: 0x1290, symBinAddr: 0x1000030B8, symSize: 0x32C }
+  - { offset: 0x1040, size: 0x8, addend: 0x0, symName: _seamCarve, symObjAddr: 0x15BC, symBinAddr: 0x1000033E4, symSize: 0x330 }
+  - { offset: 0x1183, size: 0x8, addend: 0x0, symName: _findSeam, symObjAddr: 0x18EC, symBinAddr: 0x100003714, symSize: 0x55C }
+  - { offset: 0x130E, size: 0x8, addend: 0x0, symName: _removeSeam, symObjAddr: 0x1E48, symBinAddr: 0x100003C70, symSize: 0x100 }
 ...
