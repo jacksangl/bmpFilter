@@ -310,26 +310,11 @@ int seamCarve(int height, int width, RGBTRIPLE image[height][width], int compres
         return width;
     }
     
-    // Create a working copy of the image to avoid corrupting the original
-    RGBTRIPLE (*workingImage)[width] = malloc(height * width * sizeof(RGBTRIPLE));
-    if (workingImage == NULL) {
-        fprintf(stderr, "Failed to allocate memory for working image\n");
-        free(seam);
-        return width;
-    }
-    
-    // Copy original image to working copy
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            workingImage[i][j] = image[i][j];
-        }
-    }
-    
     // Actually remove seams one by one
     for (int n = 0; n < seamsToRemove; n++) {
         printf("Removing seam %d/%d (current width: %d)\n", n+1, seamsToRemove, currentWidth);
         
-        findSeam(height, currentWidth, workingImage, seam);
+        findSeam(height, currentWidth, image, seam);
         
         // Validate seam before removal
         bool validSeam = true;
@@ -347,33 +332,8 @@ int seamCarve(int height, int width, RGBTRIPLE image[height][width], int compres
             break;
         }
         
-        // Create a new clean image with one less column
-        RGBTRIPLE (*newImage)[width] = malloc(height * width * sizeof(RGBTRIPLE));
-        if (newImage == NULL) {
-            fprintf(stderr, "Failed to allocate memory for new image\n");
-            break;
-        }
-        
-        // Copy pixels, skipping the seam
-        for (int i = 0; i < height; i++) {
-            int newJ = 0;
-            for (int oldJ = 0; oldJ < currentWidth; oldJ++) {
-                if (oldJ != seam[i]) { // Skip the seam pixel
-                    newImage[i][newJ] = workingImage[i][oldJ];
-                    newJ++;
-                }
-            }
-            // Clear remaining pixels in the row to prevent artifacts
-            for (int j = newJ; j < width; j++) {
-                newImage[i][j].rgbtRed = 0;
-                newImage[i][j].rgbtGreen = 0;
-                newImage[i][j].rgbtBlue = 0;
-            }
-        }
-        
-        // Replace working image with new clean image
-        free(workingImage);
-        workingImage = newImage;
+        // Remove the seam in-place
+        removeSeam(height, currentWidth, image, seam);
         currentWidth--;
         
         // Sanity check - ensure we don't go below minimum width
@@ -383,12 +343,8 @@ int seamCarve(int height, int width, RGBTRIPLE image[height][width], int compres
         }
     }
     
-    // Copy the final clean image back to the original image array
+    // Clear any remaining pixels to prevent artifacts
     for (int i = 0; i < height; i++) {
-        for (int j = 0; j < currentWidth; j++) {
-            image[i][j] = workingImage[i][j];
-        }
-        // Clear any remaining pixels to prevent artifacts
         for (int j = currentWidth; j < width; j++) {
             image[i][j].rgbtRed = 0;
             image[i][j].rgbtGreen = 0;
@@ -396,7 +352,6 @@ int seamCarve(int height, int width, RGBTRIPLE image[height][width], int compres
         }
     }
 
-    free(workingImage);
     free(seam);
     return currentWidth; // Return the new width after seam removal
 }
