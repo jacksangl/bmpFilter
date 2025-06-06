@@ -68,7 +68,6 @@ BITMAPINFOHEADER;
  */
 typedef struct
 {
-    BYTE  rgbt[3];
     BYTE  rgbtBlue;
     BYTE  rgbtGreen;
     BYTE  rgbtRed;

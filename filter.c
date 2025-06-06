@@ -84,13 +84,12 @@ int main(int argc, char *argv[])
     BITMAPFILEHEADER bf;
     fread(&bf, sizeof(BITMAPFILEHEADER), 1, inptr);
 
-    // Read infile's BITMAPINFOHEADER
+    // Read infile's BITMAPINFOHEADER (first 40 bytes)
     BITMAPINFOHEADER bi;
     fread(&bi, sizeof(BITMAPINFOHEADER), 1, inptr);
 
-    // Ensure infile is (likely) a 24-bit uncompressed BMP 4.0
-    if (bf.bfType != 0x4d42 || bf.bfOffBits != 54 || bi.biSize != 40 ||
-        bi.biBitCount != 24 || bi.biCompression != 0)
+    // Ensure infile is a valid 24-bit uncompressed BMP (supports BMP 3.0, 4.0, and 5.0)
+    if (bf.bfType != 0x4d42 || bi.biBitCount != 24 || bi.biCompression != 0)
     {
         fclose(outptr);
         fclose(inptr);
@@ -98,12 +97,40 @@ int main(int argc, char *argv[])
         return 6;
     }
 
+    // Validate header size (must be at least 40 bytes for basic BITMAPINFOHEADER)
+    if (bi.biSize < 40)
+    {
+        fclose(outptr);
+        fclose(inptr);
+        printf("Invalid BMP header size.\n");
+        return 6;
+    }
+
+    // Skip any extended header data (for BMP 4.0/5.0 support)
+    if (bi.biSize > 40)
+    {
+        fseek(inptr, bi.biSize - 40, SEEK_CUR);
+    }
+
+    // Position file pointer at pixel data (handles variable header sizes)
+    fseek(inptr, bf.bfOffBits, SEEK_SET);
+
     // Get image's dimensions
     int height = abs(bi.biHeight);
     int width = bi.biWidth;
+    int newWidth = width; // Track the new width after seam carving
 
     // Allocate memory for image
     RGBTRIPLE(*image)[width] = calloc(height, width * sizeof(RGBTRIPLE));
+    
+    // Initialize all pixels to black (0,0,0) to prevent garbage data artifacts
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            image[i][j].rgbtRed = 0;
+            image[i][j].rgbtGreen = 0;
+            image[i][j].rgbtBlue = 0;
+        }
+    }
     if (image == NULL)
     {
         printf("Not enough memory to store image.\n");
@@ -150,10 +177,29 @@ int main(int argc, char *argv[])
             
         // Seam carving
         case 's':
-            seamCarve(height, width, image, compressPercent);
+            newWidth = seamCarve(height, width, image, compressPercent);
             break;
     }
 
+    // Ensure output is in BMP 3.0 format for maximum compatibility
+    bi.biSize = 40;  // Standard BITMAPINFOHEADER size
+    bf.bfOffBits = 54;  // Standard offset for BMP 3.0
+    
+    // Update width in header for seam carving
+    if (filter == 's') {
+        bi.biWidth = newWidth;
+    }
+    
+    // Recalculate file size for BMP 3.0 format
+    int outputWidth = (filter == 's') ? newWidth : width;
+    int outputPadding = (4 - (outputWidth * sizeof(RGBTRIPLE)) % 4) % 4;
+    int outputImageSize = (outputWidth * sizeof(RGBTRIPLE) + outputPadding) * height;
+    bi.biSizeImage = outputImageSize;
+    bf.bfSize = 54 + outputImageSize;  // 54 bytes for headers + image data
+    
+    // Update padding for writing
+    padding = outputPadding;
+    
     // Write outfile's BITMAPFILEHEADER
     fwrite(&bf, sizeof(BITMAPFILEHEADER), 1, outptr);
 
@@ -161,10 +207,13 @@ int main(int argc, char *argv[])
     fwrite(&bi, sizeof(BITMAPINFOHEADER), 1, outptr);
 
     // Write new pixels to outfile
+    // Use newWidth for seam carving, original width for other filters
+    int writeWidth = (filter == 's') ? newWidth : width;
+    
     for (int i = 0; i < height; i++)
     {
         // Write row to outfile
-        fwrite(image[i], sizeof(RGBTRIPLE), width, outptr);
+        fwrite(image[i], sizeof(RGBTRIPLE), writeWidth, outptr);
 
         // Write padding at end of row
         for (int k = 0; k < padding; k++)
@@ -180,4 +229,4 @@ int main(int argc, char *argv[])
     fclose(inptr);
     fclose(outptr);
     return 0;
-} 
+}

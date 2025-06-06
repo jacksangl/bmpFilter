@@ -2,6 +2,8 @@
 #include <math.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <stdbool.h>
 
 // Helper function to find minimum of two integers
 int min(int a, int b)
@@ -137,8 +139,8 @@ void edgePixel(int i, int j, int height, int width, RGBTRIPLE original[height][w
         double bufferX = gxMatrix(grid[0], grid[1], grid[2], grid[3], grid[4], grid[5], grid[6], grid[7], grid[8]);
         double bufferY = gyMatrix(grid[0], grid[1], grid[2], grid[3], grid[4], grid[5], grid[6], grid[7], grid[8]);
         
-        // Calculate final edge value
-        double buffer = sqrt(bufferX + bufferY);
+        // Calculate final edge value using proper Sobel magnitude: sqrt(gx² + gy²)
+        double buffer = sqrt(bufferX * bufferX + bufferY * bufferY);
         if (buffer > CAP) {
             buffer = CAP;
         }
@@ -183,15 +185,13 @@ void edges(int height, int width, RGBTRIPLE image[height][width])
 double gxMatrix(int topLeft, int top, int topRight, int middleLeft, int middle, int middleRight, int bottomLeft, int bottom, int bottomRight)
 {
     double gx = (topLeft * -1 + top * 0 + topRight * 1 + middleLeft * -2 + middle * 0 + middleRight * 2 + bottomLeft * -1 + bottom * 0 + bottomRight * 1);
-    gx = pow(gx, 2.0);
-    return gx;
+    return gx;  // Return gx directly, don't square it here
 }
 
 double gyMatrix(int topLeft, int top, int topRight, int middleLeft, int middle, int middleRight, int bottomLeft, int bottom, int bottomRight)
 {
     double gy = (topLeft * -1 + top * -2 + topRight * -1 + middleLeft * 0 + middle * 0 + middleRight * 0 + bottomLeft * 1 + bottom * 2 + bottomRight * 1);
-    gy = pow(gy, 2.0);
-    return gy;
+    return gy;  // Return gy directly, don't square it here
 }
 
 // function definitions
@@ -238,10 +238,10 @@ void setColorChannel(RGBTRIPLE *pixel, int channel, int value)
 }
 
 // EDGE ENERGY FOR SEAM DETECTION
-int edgeEnergy(int i, int j, int height, int width, RGBTRIPLE image[height][width])
+double edgeEnergy(int i, int j, int height, int width, RGBTRIPLE image[height][width])
 {
     // For each color channel (0=red, 1=green, 2=blue)
-    int totalEnergy = 0;
+    double totalEnergy = 0.0;
     
     for (int color = 0; color < 3; color++) {
         // Get the 3x3 grid of color values around the current pixel
@@ -275,24 +275,21 @@ int edgeEnergy(int i, int j, int height, int width, RGBTRIPLE image[height][widt
                   0*grid[3] +  0*grid[4] +  0*grid[5] +
                   1*grid[6] +  2*grid[7] +  1*grid[8];
         
-        // Add to total energy
-        totalEnergy += gx*gx + gy*gy;
+        // Calculate energy for this channel and add to total
+        double channelEnergy = sqrt(gx*gx + gy*gy);
+        totalEnergy += channelEnergy;
     }
     
+    // Return total energy (not average) - this is more standard for seam carving
     return totalEnergy;
 }
 
-
-
-
 int seamCarve(int height, int width, RGBTRIPLE image[height][width], int compressPercent)
 {
-    // Create a copy of the original image
-    RGBTRIPLE imageCopy[height][width];
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            imageCopy[i][j] = image[i][j];
-        }
+    // Input validation
+    if (compressPercent <= 0 || compressPercent >= 100) {
+        printf("Invalid compression percentage: %d\n", compressPercent);
+        return width;
     }
     
     // Calculate how many seams to remove based on compression percentage
@@ -300,30 +297,126 @@ int seamCarve(int height, int width, RGBTRIPLE image[height][width], int compres
     if (seamsToRemove >= width) {
         seamsToRemove = width - 1; // Don't remove all columns
     }
+    if (seamsToRemove <= 0) {
+        return width; // No seams to remove
+    }
+    
+    printf("Removing %d seams from image of width %d\n", seamsToRemove, width);
     
     int currentWidth = width;
     int *seam = malloc(height * sizeof(int));
-    
-    for (int n = 0; n < seamsToRemove; n++) {
-        findSeam(height, currentWidth, imageCopy, seam);
-        removeSeam(height, currentWidth, imageCopy, seam);
-        currentWidth--;
+    if (seam == NULL) {
+        fprintf(stderr, "Failed to allocate memory for seam\n");
+        return width;
     }
-
-    // Copy back the carved image (only the remaining pixels)
+    
+    // Create a working copy of the image to avoid corrupting the original
+    RGBTRIPLE (*workingImage)[width] = malloc(height * width * sizeof(RGBTRIPLE));
+    if (workingImage == NULL) {
+        fprintf(stderr, "Failed to allocate memory for working image\n");
+        free(seam);
+        return width;
+    }
+    
+    // Copy original image to working copy
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            workingImage[i][j] = image[i][j];
+        }
+    }
+    
+    // Actually remove seams one by one
+    for (int n = 0; n < seamsToRemove; n++) {
+        printf("Removing seam %d/%d (current width: %d)\n", n+1, seamsToRemove, currentWidth);
+        
+        findSeam(height, currentWidth, workingImage, seam);
+        
+        // Validate seam before removal
+        bool validSeam = true;
+        for (int i = 0; i < height; i++) {
+            if (seam[i] < 0 || seam[i] >= currentWidth) {
+                printf("ERROR: Invalid seam at row %d, col %d (width=%d)\n", 
+                       i, seam[i], currentWidth);
+                validSeam = false;
+                break;
+            }
+        }
+        
+        if (!validSeam) {
+            printf("Stopping seam removal due to invalid seam\n");
+            break;
+        }
+        
+        // Create a new clean image with one less column
+        RGBTRIPLE (*newImage)[width] = malloc(height * width * sizeof(RGBTRIPLE));
+        if (newImage == NULL) {
+            fprintf(stderr, "Failed to allocate memory for new image\n");
+            break;
+        }
+        
+        // Copy pixels, skipping the seam
+        for (int i = 0; i < height; i++) {
+            int newJ = 0;
+            for (int oldJ = 0; oldJ < currentWidth; oldJ++) {
+                if (oldJ != seam[i]) { // Skip the seam pixel
+                    newImage[i][newJ] = workingImage[i][oldJ];
+                    newJ++;
+                }
+            }
+            // Clear remaining pixels in the row to prevent artifacts
+            for (int j = newJ; j < width; j++) {
+                newImage[i][j].rgbtRed = 0;
+                newImage[i][j].rgbtGreen = 0;
+                newImage[i][j].rgbtBlue = 0;
+            }
+        }
+        
+        // Replace working image with new clean image
+        free(workingImage);
+        workingImage = newImage;
+        currentWidth--;
+        
+        // Sanity check - ensure we don't go below minimum width
+        if (currentWidth <= 1) {
+            printf("Reached minimum width, stopping\n");
+            break;
+        }
+    }
+    
+    // Copy the final clean image back to the original image array
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < currentWidth; j++) {
-            image[i][j] = imageCopy[i][j];
+            image[i][j] = workingImage[i][j];
+        }
+        // Clear any remaining pixels to prevent artifacts
+        for (int j = currentWidth; j < width; j++) {
+            image[i][j].rgbtRed = 0;
+            image[i][j].rgbtGreen = 0;
+            image[i][j].rgbtBlue = 0;
         }
     }
 
+    free(workingImage);
     free(seam);
-    return currentWidth; // Return the new width
+    return currentWidth; // Return the new width after seam removal
 }
+
 
 void findSeam(int height, int width, RGBTRIPLE image[height][width], int *seam)
 {
-    int M[height][width];
+    
+    // Input validation
+    if (width <= 0 || height <= 0) {
+        fprintf(stderr, "Invalid dimensions: %dx%d\n", height, width);
+        return;
+    }
+    
+    // Allocate energy matrix on heap to avoid stack overflow with large images
+    double (*M)[width] = malloc(height * width * sizeof(double));
+    if (M == NULL) {
+        fprintf(stderr, "Failed to allocate memory for energy matrix\n");
+        return;
+    }
     
     // 1. Calculate energy and initialize first row
     for (int j = 0; j < width; j++) {
@@ -333,14 +426,16 @@ void findSeam(int height, int width, RGBTRIPLE image[height][width], int *seam)
     // 2. Fill DP table
     for (int i = 1; i < height; i++) {
         for (int j = 0; j < width; j++) {
-            int current_energy = edgeEnergy(i, j, height, width, image);
-            int min_prev = M[i-1][j]; // directly above
+            double current_energy = edgeEnergy(i, j, height, width, image);
+            double min_prev = M[i-1][j]; // directly above
             
+            // Check diagonal left (only if j > 0)
             if (j > 0 && M[i-1][j-1] < min_prev) {
-                min_prev = M[i-1][j-1]; // diagonal left
+                min_prev = M[i-1][j-1];
             }
+            // Check diagonal right (only if j < width-1)
             if (j < width-1 && M[i-1][j+1] < min_prev) {
-                min_prev = M[i-1][j+1]; // diagonal right
+                min_prev = M[i-1][j+1];
             }
             
             M[i][j] = current_energy + min_prev;
@@ -361,15 +456,15 @@ void findSeam(int height, int width, RGBTRIPLE image[height][width], int *seam)
     for (int i = height-2; i >= 0; i--) {
         int j = seam[i+1];
         int best_j = j;
-        int best_energy = M[i][j];
+        double best_energy = M[i][j];
         
-        // Check left diagonal
+        // Check left diagonal (only if valid)
         if (j > 0 && M[i][j-1] < best_energy) {
             best_j = j - 1;
             best_energy = M[i][j-1];
         }
         
-        // Check right diagonal
+        // Check right diagonal (only if valid)
         if (j < width-1 && M[i][j+1] < best_energy) {
             best_j = j + 1;
             best_energy = M[i][j+1];
@@ -377,18 +472,38 @@ void findSeam(int height, int width, RGBTRIPLE image[height][width], int *seam)
         
         seam[i] = best_j;
     }
+    
+    // Validate the computed seam
+    for (int i = 0; i < height; i++) {
+        if (seam[i] < 0 || seam[i] >= width) {
+            fprintf(stderr, "ERROR: Computed invalid seam at row %d: %d (width=%d)\n", 
+                    i, seam[i], width);
+            // Set to a safe value
+            seam[i] = (seam[i] < 0) ? 0 : width-1;
+        }
+    }
+    
+    // Free the energy matrix
+    free(M);
 }
 
 void removeSeam(int height, int width, RGBTRIPLE image[height][width], int *seam)
 {
-    // Iterate over each row (height), not width
+    // Iterate over each row (height)
     for (int i = 0; i < height; i++) {
         int col = seam[i];  // Column to remove in row i
+        
+        // Bounds check - if seam position is invalid, skip this row
+        if (col < 0 || col >= width) {
+            fprintf(stderr, "WARNING: Invalid seam position %d at row %d (width=%d)\n", 
+                    col, i, width);
+            continue;
+        }
+        
         // Shift all pixels to the left from the seam position
+        // Only shift up to width-1 (the last valid position)
         for (int j = col; j < width - 1; j++) {
             image[i][j] = image[i][j + 1];
         }
     }
-    return;
 }
-    
