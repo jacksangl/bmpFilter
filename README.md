@@ -62,11 +62,21 @@ make filter
 # Compress image by 10% width
 ./filter -s 10 input.bmp output.bmp
 ```
+## Example Image
+### Original Image
+<img src="./images/hd.bmp" alt="Original HD.bmp" width="640" height="427">
 
-## Performance
+### 20% compression via seam carving
+<img src="./processed/seamCarve.bmp" alt="HD.bmp 20% compression" width="512" height="427">
 
+### 50% compression via seam carving
+<img src="./processed/seamCarve50.bmp" alt="HD.bmp 20% compression" width="320" height="427">
+
+## Performance 
+
+Note: Tested on 2020 M1 Macbook Air with 8GB of RAM
 - **Small Images** (600×400): ~1 second for 20% compression
-- **HD Images** (1280×853): ~24 seconds for 10% compression
+- **HD Images** (1280×853): ~24 seconds for 10% compression 
 - **Memory Efficient**: O(width × height) space complexity
 - **Optimized Algorithm**: In-place modification reduces memory overhead by 50%
 
@@ -176,9 +186,10 @@ bmpFilter/
 ├── filter.c          # Main program and argument parsing
 ├── helpers.c         # Image processing algorithms
 ├── helpers.h         # Function declarations
-├── bmp.h            # BMP format definitions
-├── Makefile         # Build configuration
-└── images/          # Sample images for testing
+├── bmp.h             # BMP format definitions
+├── Makefile          # Build configuration
+├── processed/        # Example Processed Images  
+└── images/           # Sample images for testing
 ```
 
 ## Requirements
@@ -193,8 +204,8 @@ bmpFilter/
 - **Input**: 1280×853 HD image (3.2MB)
 - **Output**: 1152×853 compressed image (2.9MB)
 - **Compression**: 10% width reduction while preserving important visual content
-- **Processing Time**: ~24 seconds
-
+- **Processing Time**: ~23 seconds on a 2020 MacBook Air with an M1 Chip and 8GB of RAM
+- **NOTE: Proccessing Time exponentially increases on larger images due to running time**
 ## Potential Future Improvements
 
 - **PNG Support**: Extend file format support to include PNG images with transparency handling
@@ -203,5 +214,5 @@ bmpFilter/
 - **Multi-threaded Processing**: Parallelize energy calculation for improved performance on multi-core systems
 - **Interactive Preview**: Real-time seam visualization before processing
 - **Batch Processing**: Support for processing multiple images in a single command
-
 ---
+# Thanks for reading 
