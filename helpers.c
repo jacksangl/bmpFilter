@@ -369,33 +369,10 @@ void findSeam(int height, int currentWidth, RGBTRIPLE image[height][currentWidth
     free(M);
 }
 
-void removeSeam(int height, int currentWidth, RGBTRIPLE image[][currentWidth], int *seam)
-{
-    // Iterate over each row (height)
-    for (int i = 0; i < height; i++) {
-        int col = seam[i];  // Column to remove in row i
-        
-        // Bounds check - if seam position is invalid, skip this row
-        if (col < 0 || col >= currentWidth) {
-            fprintf(stderr, "WARNING: Invalid seam position %d at row %d (width=%d)\n", 
-                    col, i, currentWidth);
-            continue;
-        }
-        
-        // Shift all pixels to the left from the seam position
-        // Only shift up to width-1 (the last valid position)
-        for (int j = col; j < currentWidth - 1; j++) {
-            image[i][j] = image[i][j + 1];
-        }
-        image[i][currentWidth - 1].rgbtRed = 0;
-        image[i][currentWidth - 1].rgbtGreen = 0;
-        image[i][currentWidth - 1].rgbtBlue = 0;
-    }
-}
 
 int seamCarve(int height, int width, RGBTRIPLE image[height][width], int compressPercent)
 {
-     if (compressPercent <= 0 || compressPercent >= 100) {
+    if (compressPercent <= 0 || compressPercent >= 100) {
         printf("Invalid compression percentage: %d\n", compressPercent);
         return width;
     }
@@ -411,47 +388,71 @@ int seamCarve(int height, int width, RGBTRIPLE image[height][width], int compres
     }
     
     printf("Removing %d seams from image of width %d\n", seamsToRemove, width);
-    // create new image 
+    
+    // Allocate a separate working buffer that we'll use for computation
+    // This is sized to the original width
     RGBTRIPLE (*workingImage)[width] = malloc(height * width * sizeof(RGBTRIPLE));
     if (workingImage == NULL) {
-        fprintf(stderr, "Failed to allocate memory to image\n");
+        fprintf(stderr, "Failed to allocate memory for working image\n");
         return width;
     }
 
+    // Copy the original image to working buffer
     for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++)
-        workingImage[i][j] = image[i][j];
+        for (int j = 0; j < width; j++) {
+            workingImage[i][j] = image[i][j];
+        }
     }
     
     int currentWidth = width;
     int *seam = malloc(height * sizeof(int));
     if (seam == NULL) {
         fprintf(stderr, "Failed to allocate memory for seam\n");
-        free(workingImage); // almost forgot this lol
+        free(workingImage);
         return width;
     }
     
-    // Actually remove seams one by one
+    // Remove seams one by one
     for (int n = 0; n < seamsToRemove; n++) {
         printf("Removing seam %d/%d (current width: %d)\n", n+1, seamsToRemove, currentWidth);
         
+        // Find the minimum energy seam
         findSeam(height, currentWidth, workingImage, seam);
-        removeSeam(height, currentWidth, workingImage, seam);
-        currentWidth --;
         
-        // Sanity check - ensure we don't go below minimum width
+        // Remove the seam - shift pixels left
+        for (int i = 0; i < height; i++) {
+            int seamCol = seam[i];
+            
+            // Validate seam position
+            if (seamCol < 0 || seamCol >= currentWidth) {
+                fprintf(stderr, "ERROR: Invalid seam position %d at row %d (currentWidth=%d)\n", 
+                        seamCol, i, currentWidth);
+                continue;
+            }
+            
+            // Shift all pixels to the left starting from the seam position
+            for (int j = seamCol; j < currentWidth - 1; j++) {
+                workingImage[i][j] = workingImage[i][j + 1];
+            }
+        }
+        // I could put this in a function but I'm not sure if it's worth it
+        
+        currentWidth--;
+        
+        // Sanity check
         if (currentWidth <= 1) {
             printf("Reached minimum width, stopping\n");
             break;
         }
     }
-     // Copy result back to original image
+    
+    // Copy the carved result back to the original image array
     for (int i = 0; i < height; i++) {
-        // Copy valid pixels
+        // Copy the remaining pixels
         for (int j = 0; j < currentWidth; j++) {
             image[i][j] = workingImage[i][j];
         }
-        // Clear remaining pixels
+        // Clear the removed pixels (set to black)
         for (int j = currentWidth; j < width; j++) {
             image[i][j].rgbtRed = 0;
             image[i][j].rgbtGreen = 0;

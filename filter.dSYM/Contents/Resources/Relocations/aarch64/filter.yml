@@ -21,6 +21,5 @@ relocations:
   - { offset: 0xE8D, size: 0x8, addend: 0x0, symName: _averageBlue9, symObjAddr: 0x1118, symBinAddr: 0x100001DCC, symSize: 0xA0 }
   - { offset: 0xF41, size: 0x8, addend: 0x0, symName: _edgeEnergy, symObjAddr: 0x11B8, symBinAddr: 0x100001E6C, symSize: 0x340 }
   - { offset: 0x1087, size: 0x8, addend: 0x0, symName: _findSeam, symObjAddr: 0x14F8, symBinAddr: 0x1000021AC, symSize: 0x61C }
-  - { offset: 0x1211, size: 0x8, addend: 0x0, symName: _removeSeam, symObjAddr: 0x1B14, symBinAddr: 0x1000027C8, symSize: 0x1E4 }
-  - { offset: 0x12BB, size: 0x8, addend: 0x0, symName: _seamCarve, symObjAddr: 0x1CF8, symBinAddr: 0x1000029AC, symSize: 0x48C }
+  - { offset: 0x1211, size: 0x8, addend: 0x0, symName: _seamCarve, symObjAddr: 0x1B14, symBinAddr: 0x1000027C8, symSize: 0x5AC }
 ...

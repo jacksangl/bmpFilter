@@ -23,7 +23,6 @@ void edgePixel(int i, int j, int height, int width, RGBTRIPLE original[height][w
 
 // Seam carving helper functions
 void findSeam(int height, int width, RGBTRIPLE image[height][width], int *seam);
-void removeSeam(int height, int width, RGBTRIPLE image[height][width], int *seam);
 double edgeEnergy(int i, int j, int height, int width, RGBTRIPLE image[height][width]);
 
 // Matrix calculation functions for edge detection

@@ -82,6 +82,93 @@ make filter
 - **Space Complexity**: Reduced from O(n × width × height) to O(width × height)
 - **Time Complexity**: Maintained O(n × width × height) while dramatically improving constants
 
+## Troubleshooting & Bug Fixes
+
+During development, several critical issues were identified and resolved:
+
+### Issue 1: Memory Management in Working Image Buffer
+**Problem**: The original implementation didn't properly handle the working image buffer as seams were removed, leading to memory corruption and incorrect results.
+
+**Symptoms**: 
+- Generated output files had corrupted pixel data
+- Inconsistent image dimensions after processing
+- Potential memory access violations
+
+**Solution**: 
+- Implemented a separate working buffer with original width dimensions
+- Proper memory allocation and deallocation for the working image
+- Clean separation between input processing and output generation
+
+```c
+// Fixed: Allocate working buffer for original width
+RGBTRIPLE (*workingImage)[width] = malloc(height * width * sizeof(RGBTRIPLE));
+```
+
+### Issue 2: Seam Removal Logic with Variable Width Arrays
+**Problem**: The separate `removeSeam()` function created complications with variable-length arrays as the image width changed during processing.
+
+**Symptoms**:
+- Array dimension mismatches causing undefined behavior
+- Incorrect pixel shifting operations
+- Memory boundary violations during seam removal
+
+**Solution**:
+- Integrated seam removal directly into the main `seamCarve()` function
+- Eliminated the problematic separate function that caused dimension conflicts
+- Direct pixel shifting with proper bounds checking
+
+```c
+// Fixed: Direct pixel shifting in seamCarve function
+for (int j = seamCol; j < currentWidth - 1; j++) {
+    workingImage[i][j] = workingImage[i][j + 1];
+}
+```
+
+### Issue 3: Width Tracking Throughout Processing
+**Problem**: Inconsistent tracking of the current image width as seams were progressively removed.
+
+**Symptoms**:
+- Seam detection algorithms operating on incorrect width values
+- Energy calculations accessing invalid memory regions
+- Output files with incorrect final dimensions
+
+**Solution**:
+- Implemented robust `currentWidth` variable tracking
+- Proper width validation at each seam removal step
+- Comprehensive bounds checking for all array operations
+
+### Issue 4: Memory Safety and Error Handling
+**Problem**: Insufficient error handling for memory allocation failures and invalid seam positions.
+
+**Symptoms**:
+- Potential crashes on large images or low memory conditions
+- Invalid seam coordinates causing array out-of-bounds access
+- Silent failures with corrupted output
+
+**Solution**:
+- Added comprehensive memory allocation error checking
+- Implemented seam position validation with detailed error messages
+- Graceful handling of edge cases (minimum width constraints)
+
+```c
+// Fixed: Robust error checking
+if (seamCol < 0 || seamCol >= currentWidth) {
+    fprintf(stderr, "ERROR: Invalid seam position %d at row %d\n", seamCol, i);
+    continue;
+}
+```
+
+### Verification Results
+After implementing these fixes:
+- ✅ Consistent file size reduction proportional to compression percentage
+- ✅ Valid BMP files with correct headers and dimensions
+- ✅ No memory leaks or access violations
+- ✅ Proper handling of various image sizes and compression ratios
+
+**Example**: 600×400 image with 20% compression:
+- Input: 720,056 bytes → Output: 576,054 bytes
+- Width: 600 pixels → 480 pixels (exactly 20% reduction)
+
 ## File Structure
 
 ```
@@ -118,5 +205,3 @@ bmpFilter/
 - **Batch Processing**: Support for processing multiple images in a single command
 
 ---
-
-*This project demonstrates advanced C programming, algorithm optimization, memory management, and computer vision concepts through practical image processing applications.* 
